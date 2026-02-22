@@ -1,0 +1,7 @@
+{
+  "name": "Lifewood Redesign",
+  "description": "A modern, high-performance redesign of the Lifewood homepage, featuring AI-powered data solutions with an integrated Gemini strategy assistant.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}

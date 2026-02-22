@@ -1,0 +1,91 @@
+.aigc-bounce-stage {
+  perspective: 1200px;
+  cursor: pointer;
+  outline: none;
+}
+
+.aigc-bounce-card {
+  will-change: transform, opacity;
+  transition: transform 0.46s cubic-bezier(0.22, 0.61, 0.36, 1), opacity 0.34s ease;
+}
+
+.aigc-bounce-card img {
+  transition: transform 0.46s cubic-bezier(0.22, 0.61, 0.36, 1), filter 0.34s ease;
+}
+
+.aigc-bounce-card-back {
+  z-index: 10;
+}
+
+.aigc-bounce-card-back {
+  animation: aigcBounceBack 3.9s ease-in-out infinite;
+}
+
+.aigc-bounce-card-mid {
+  z-index: 20;
+  animation: aigcBounceMid 4.3s ease-in-out infinite;
+}
+
+.aigc-bounce-card-front {
+  z-index: 30;
+  animation: aigcBounceFront 3.5s ease-in-out infinite;
+}
+
+.aigc-bounce-stage.is-swiping .aigc-bounce-card-front {
+  animation: none;
+  transform: translate3d(112%, -8px, 0) rotate(10deg) scale(0.985);
+  opacity: 0;
+}
+
+.aigc-bounce-stage.is-swiping .aigc-bounce-card-mid {
+  animation: none;
+  transform: translate3d(10px, -8px, 0) rotate(-1.2deg);
+}
+
+.aigc-bounce-stage.is-swiping .aigc-bounce-card-back {
+  animation: none;
+  transform: translate3d(-10px, 8px, 0) rotate(1.2deg);
+}
+
+.aigc-bounce-stage.is-swiping .aigc-bounce-card img {
+  transform: scale(1.03);
+  filter: saturate(1.03);
+}
+
+@keyframes aigcBounceBack {
+  0%,
+  100% {
+    transform: translate3d(-24px, 24px, 0) rotate(3deg);
+  }
+  50% {
+    transform: translate3d(-24px, 10px, 0) rotate(1.5deg);
+  }
+}
+
+@keyframes aigcBounceMid {
+  0%,
+  100% {
+    transform: translate3d(24px, -24px, 0) rotate(-3deg);
+  }
+  50% {
+    transform: translate3d(24px, -10px, 0) rotate(-1.5deg);
+  }
+}
+
+@keyframes aigcBounceFront {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0) rotate(0deg);
+  }
+  50% {
+    transform: translate3d(0, -10px, 0) rotate(-0.8deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .aigc-bounce-card-back,
+  .aigc-bounce-card-mid,
+  .aigc-bounce-card-front {
+    animation: none;
+  }
+}

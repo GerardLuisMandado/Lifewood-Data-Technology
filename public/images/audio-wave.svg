@@ -1,0 +1,40 @@
+<svg width="1200" height="800" viewBox="0 0 1200 800" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="800" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#041D1A"/>
+      <stop offset="1" stop-color="#0D4A30"/>
+    </linearGradient>
+    <linearGradient id="wave" x1="120" y1="360" x2="1080" y2="360" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#8CD3FF"/>
+      <stop offset="1" stop-color="#C6EAFF"/>
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-120%" width="140%" height="340%">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="1200" height="800" fill="url(#bg)"/>
+
+  <circle cx="980" cy="160" r="120" fill="#D4AF37" opacity="0.12"/>
+  <circle cx="220" cy="680" r="180" fill="#D4AF37" opacity="0.08"/>
+
+  <path d="M80 440 C230 300 360 560 510 390 C650 230 780 560 930 370 C1010 280 1080 360 1120 320"
+        stroke="#C6EAFF" stroke-opacity="0.3" stroke-width="2"/>
+
+  <line x1="120" y1="360" x2="1080" y2="360" stroke="#8CD3FF" stroke-opacity="0.25" stroke-width="2"/>
+
+  <polyline
+    points="120,360 144,360 156,318 168,402 180,282 192,438 204,350 216,370 228,300 240,420 252,360 264,360 276,330 288,390 300,250 312,470 324,360 336,360 348,292 360,428 372,312 384,408 396,360 408,360 420,260 432,460 444,300 456,420 468,320 480,400 492,360 504,360 516,340 528,380 540,300 552,420 564,280 576,440 588,360 600,360 612,270 624,450 636,290 648,430 660,320 672,400 684,300 696,420 708,330 720,390 732,280 744,440 756,360 768,360 780,300 792,420 804,290 816,430 828,315 840,405 852,265 864,455 876,300 888,420 900,340 912,380 924,320 936,400 948,330 960,390 972,350 984,370 996,340 1008,380 1020,350 1032,370 1044,352 1056,368 1080,360"
+    fill="none"
+    stroke="url(#wave)"
+    stroke-width="6"
+    stroke-linejoin="round"
+    stroke-linecap="round"
+    filter="url(#glow)"
+  />
+
+</svg>

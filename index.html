@@ -1,0 +1,92 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lifewood Data Technology</title>
+    <link rel="icon" type="image/png" href="https://framerusercontent.com/images/mmBfl11ZRTsDKI8lhNBYvZHIEMo.png" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        html {
+            scroll-behavior: smooth;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            scroll-behavior: smooth;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+        .dark-glass {
+            background: rgba(11, 46, 38, 0.8);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        .animate-float {
+            animation: float 6s ease-in-out infinite;
+        }
+        .hero-slide-right {
+            opacity: 0;
+            transform: translateX(-24px);
+            transition: opacity 0.95s cubic-bezier(0.19, 1, 0.22, 1), transform 0.95s cubic-bezier(0.19, 1, 0.22, 1);
+            will-change: transform, opacity;
+        }
+        .hero-slide-right.hero-slide-in {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .hero-delay-1 { transition-delay: 120ms; }
+        .hero-delay-2 { transition-delay: 260ms; }
+        .hero-delay-3 { transition-delay: 380ms; }
+        .scroll-reveal {
+            opacity: 0;
+            transform: translateY(24px);
+            transition: opacity 0.85s cubic-bezier(0.22, 1, 0.36, 1), transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+            will-change: opacity, transform;
+        }
+        .scroll-reveal.is-visible {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        @media (prefers-reduced-motion: reduce) {
+            .scroll-reveal {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+            .hero-slide-right {
+                opacity: 1;
+                transform: none;
+                transition: none;
+            }
+            html, body {
+                scroll-behavior: auto;
+            }
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://esm.sh/react@^19.2.4/",
+    "react": "https://esm.sh/react@^19.2.4",
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "@google/genai": "https://esm.sh/@google/genai@^1.41.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="root"></div>
+<script type="module" src="/index.tsx"></script>
+</body>
+</html>
