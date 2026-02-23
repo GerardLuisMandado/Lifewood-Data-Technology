@@ -9,7 +9,7 @@ type ProjectItem = {
 };
 
 const AiProjects: React.FC = () => {
-  const [activeIndex, setActiveIndex] = useState<number>(0);
+  const [activeIndex, setActiveIndex] = useState<number>(3);
 
   const projects: ProjectItem[] = [
     {
@@ -17,7 +17,7 @@ const AiProjects: React.FC = () => {
       title: 'AI Data Extraction',
       desc: 'Using AI, we optimize the acquisition of image and text from multiple sources. Techniques include onsite scanning, drone photography, negotiation with archives and the formation of alliances with corporations, religious organizations and governments.',
       icon: 'doc',
-      image: 'https://images.unsplash.com/photo-1489515217757-5fd1be406fef?auto=format&fit=crop&q=80&w=1200'
+      image: 'https://framerusercontent.com/images/RIqv6T7aFrp5Q9X85Zqy55KQ8x4.png?scale-down-to=1024&width=1856&height=2464'
     },
     {
       id: '2.2',
@@ -45,14 +45,14 @@ const AiProjects: React.FC = () => {
       title: 'Natural Language Processing and Speech Acquisition',
       desc: 'Multi-lingual speech datasets for advanced LLM training and localization.',
       icon: 'voice',
-      image: 'https://images.unsplash.com/photo-1589254065878-42c9da997008?auto=format&fit=crop&q=80&w=1200'
+      image: 'https://images.pexels.com/photos/7562103/pexels-photo-7562103.jpeg?auto=compress&cs=tinysrgb&w=1200'
     },
     {
       id: '2.6',
       title: 'Computer Vision (CV)',
       desc: 'Pixel-perfect segmentation and object tracking for healthcare, retail, and manufacturing sectors.',
       icon: 'eye',
-      image: 'https://images.unsplash.com/photo-1518770660439-4636190af475?auto=format&fit=crop&q=80&w=1200'
+      image: 'https://cdn.pixabay.com/photo/2018/05/04/17/16/eye-3374462_1280.jpg'
     },
     {
       id: '2.7',
@@ -62,7 +62,6 @@ const AiProjects: React.FC = () => {
       image: 'https://images.unsplash.com/photo-1457694587812-e8bf29a43845?auto=format&fit=crop&q=80&w=1200'
     }
   ];
-
   const currentProject = projects[activeIndex] ?? projects[0];
   const renderIcon = (icon: ProjectItem['icon']) => {
     const base = 'w-6 h-6 text-black';
@@ -113,14 +112,67 @@ const AiProjects: React.FC = () => {
         </div>
 
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <div className="rounded-[3rem] overflow-hidden shadow-2xl h-[700px] border border-slate-200 relative group">
-            <img
-              src={currentProject.image}
-              alt={currentProject.title}
-              className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-105"
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
-          </div>
+          {currentProject.id === '2.4' ? (
+            <div className="rounded-[3rem] overflow-hidden shadow-2xl h-[700px] border border-slate-200 relative bg-gradient-to-br from-[#f8fbfd] via-[#f6f7f8] to-[#edf0f4]">
+              <div
+                className="absolute inset-0 opacity-40 pointer-events-none"
+                style={{
+                  backgroundImage:
+                    'radial-gradient(circle at 20% 20%, rgba(1,38,32,0.06), transparent 40%), radial-gradient(circle at 80% 75%, rgba(247,185,85,0.14), transparent 35%)'
+                }}
+              />
+              <div className="relative z-10 h-full flex items-center justify-center px-8 py-10">
+                <div className="w-full max-w-[360px] h-[560px] rounded-[2rem] bg-[#f3f4f6] border border-slate-200 shadow-[0_24px_70px_rgba(1,38,32,0.22)] overflow-hidden flex flex-col">
+                  <div className="bg-[#012620] text-white px-4 py-5 flex items-start justify-between">
+                    <div className="flex items-start gap-2.5">
+                      <div className="mt-0.5 flex items-center gap-1">
+                        <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]" />
+                        <div className="w-5 h-[2px] rounded bg-[#D4AF37]" />
+                      </div>
+                      <div>
+                        <p className="text-[10px] font-black tracking-widest uppercase leading-none">Lifewood AI</p>
+                        <p className="text-[8px] text-white/70 tracking-[0.18em] uppercase mt-1">Data Strategy</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      aria-label="Close chatbot preview"
+                      className="text-white/90 text-xs leading-none mt-0.5"
+                    >
+                      x
+                    </button>
+                  </div>
+
+                  <div className="flex-1 px-4 py-5 bg-[#f5f6f7]">
+                    <div className="max-w-[230px] bg-white border border-slate-200 rounded-md px-3 py-2 text-[10px] leading-relaxed text-slate-600 shadow-sm">
+                      Welcome to Lifewood. I&apos;m your Data Strategy Consultant. How can I assist you with your AI data pipeline today?
+                    </div>
+                  </div>
+
+                  <div className="bg-white border-t border-slate-200 px-4 py-4">
+                    <div className="h-10 rounded-lg border border-slate-200 bg-[#f5f6f8] pl-3 pr-2 flex items-center justify-between">
+                      <span className="text-[10px] text-slate-400 font-medium">Inquire about our capabilities...</span>
+                      <div className="w-6 h-6 rounded-md bg-[#012620] text-[#D4AF37] flex items-center justify-center text-[11px] font-bold">
+                        AI
+                      </div>
+                    </div>
+                    <p className="text-[8px] text-slate-300 text-center tracking-[0.22em] uppercase font-black mt-3">
+                      Authorized Data Strategy Agent
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-[3rem] overflow-hidden shadow-2xl h-[700px] border border-slate-200 relative group">
+              <img
+                src={currentProject.image}
+                alt={currentProject.title}
+                className="w-full h-full object-cover transition-all duration-1000 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            </div>
+          )}
 
           <div className="space-y-4">
             {projects.map((project, index) => (

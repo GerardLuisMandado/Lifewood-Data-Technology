@@ -279,10 +279,10 @@ const Philanthropy: React.FC = () => {
           <div key={idx} className={`flex flex-col md:flex-row items-center gap-16 ${idx % 2 !== 0 ? 'md:flex-row-reverse' : ''}`}>
             <div className="md:w-1/3">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-px bg-slate-200" />
-                <h3 className="text-3xl font-black text-slate-300 uppercase tracking-tighter">{section.title}</h3>
+                <div className="w-12 h-px bg-[#D4AF37]/70" />
+                <h3 className="text-3xl font-black text-[#012620] uppercase tracking-tighter">{section.title}</h3>
               </div>
-              <p className="text-xl text-slate-500 font-medium leading-relaxed">
+              <p className="text-xl text-[#417256] font-medium leading-relaxed">
                 {section.desc}
               </p>
             </div>
