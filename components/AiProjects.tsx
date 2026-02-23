@@ -9,7 +9,7 @@ type ProjectItem = {
 };
 
 const AiProjects: React.FC = () => {
-  const [activeIndex, setActiveIndex] = useState<number>(3);
+  const [activeIndex, setActiveIndex] = useState<number>(0);
 
   const projects: ProjectItem[] = [
     {
