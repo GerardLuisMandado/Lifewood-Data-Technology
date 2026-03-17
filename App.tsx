@@ -20,8 +20,24 @@ import PartnerLogos from './components/PartnerLogos';
 import AiAssistant from './components/AiAssistant';
 import HomeInnovationSection from './components/HomeInnovationSection';
 import LoginPage from './components/LoginPage';
+import Dashboard from './components/Dashboard';
 
-type Page = 'home' | 'services' | 'projects' | 'about' | 'offices' | 'type-a' | 'type-b' | 'type-c' | 'aigc' | 'philanthropy' | 'careers' | 'contact' | 'internal-news' | 'login';
+type Page =
+  | 'home'
+  | 'services'
+  | 'projects'
+  | 'about'
+  | 'offices'
+  | 'type-a'
+  | 'type-b'
+  | 'type-c'
+  | 'aigc'
+  | 'philanthropy'
+  | 'careers'
+  | 'contact'
+  | 'internal-news'
+  | 'login'
+  | 'dashboard';
 
 const App: React.FC = () => {
   const [scrolled, setScrolled] = useState(false);
@@ -42,6 +58,18 @@ const App: React.FC = () => {
       const rawHash = window.location.hash;
       const hash = rawHash.replace(/\/+$/, '');
       const path = window.location.pathname.replace(/\/+$/, '');
+
+      if (path === '/login') {
+        setCurrentPage('login');
+        scrollToTop();
+        return;
+      }
+
+      if (path === '/dashboard') {
+        setCurrentPage('dashboard');
+        scrollToTop();
+        return;
+      }
       if (hash === '#/ai-services') {
         setCurrentPage('services');
         scrollToTop();
@@ -78,7 +106,10 @@ const App: React.FC = () => {
       } else if (hash === '#/internal-news') {
         setCurrentPage('internal-news');
         scrollToTop();
-      } else if (hash === '#/login' || hash === '#login' || path === '/login') {
+      } else if (hash === '#/dashboard') {
+        setCurrentPage('dashboard');
+        scrollToTop();
+      } else if (hash === '#/login' || hash === '#login') {
         setCurrentPage('login');
         scrollToTop();
       } else {
@@ -145,7 +176,7 @@ const App: React.FC = () => {
     return () => observer.disconnect();
   }, [displayPage]);
 
-  const isLoginPage = displayPage === 'login';
+  const isAdminUiPage = displayPage === 'login' || displayPage === 'dashboard';
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-[#D4AF37]/30">
@@ -235,11 +266,12 @@ const App: React.FC = () => {
         {displayPage === 'contact' && <div className="pt-20"><ContactUsPage /></div>}
         {displayPage === 'internal-news' && <div className="pt-20"><InternalNews /></div>}
         {displayPage === 'login' && <LoginPage />}
+        {displayPage === 'dashboard' && <Dashboard />}
         </div>
       </main>
 
-      {!isLoginPage && <Footer />}
-      {!isLoginPage && <AiAssistant />}
+      {!isAdminUiPage && <Footer />}
+      {!isAdminUiPage && <AiAssistant />}
     </div>
   );
 };

@@ -1,6 +1,80 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+
+type LoginState =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'error'; message: string };
+
+const adminEmailList = (import.meta.env.VITE_ADMIN_EMAILS ?? '')
+  .split(',')
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+const isAdminEmail = (email?: string | null) => {
+  if (!email) return false;
+  if (adminEmailList.length === 0) return false;
+  return adminEmailList.includes(email.toLowerCase());
+};
 
 const LoginPage: React.FC = () => {
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [state, setState] = useState<LoginState>({ status: 'idle' });
+
+  const canSubmit = useMemo(() => {
+    if (!isSupabaseConfigured) return false;
+    if (state.status === 'loading') return false;
+    return email.trim().length > 3 && password.length >= 6;
+  }, [email, password, state.status]);
+
+  useEffect(() => {
+    const run = async () => {
+      if (!isSupabaseConfigured) return;
+      const { data } = await supabase.auth.getSession();
+      const existingEmail = data.session?.user?.email ?? null;
+      if (existingEmail && isAdminEmail(existingEmail)) {
+        window.history.replaceState({}, '', '/dashboard');
+        window.location.hash = '';
+        window.dispatchEvent(new Event('popstate'));
+      }
+    };
+    void run();
+  }, []);
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setState({ status: 'idle' });
+
+    if (!isSupabaseConfigured) {
+      setState({ status: 'error', message: 'Supabase is not configured.' });
+      return;
+    }
+
+    setState({ status: 'loading' });
+    const res = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+
+    if (res.error) {
+      setState({ status: 'error', message: res.error.message });
+      return;
+    }
+
+    const signedInEmail = res.data.user?.email ?? null;
+    if (isAdminEmail(signedInEmail)) {
+      window.history.pushState({}, '', '/dashboard');
+      window.location.hash = '';
+      window.dispatchEvent(new Event('popstate'));
+      setState({ status: 'idle' });
+      return;
+    }
+
+    await supabase.auth.signOut();
+    setState({ status: 'error', message: 'Unauthorized: this login is for admins only.' });
+  };
+
   return (
     <section data-no-reveal className="pt-28 pb-16 bg-[#F5EEDB] min-h-[calc(100vh-76px)]">
       <div className="max-w-7xl mx-auto px-6">
@@ -29,10 +103,10 @@ const LoginPage: React.FC = () => {
               </p>
 
               <div className="mt-8 grid grid-cols-2 gap-3">
-                <button className="h-12 rounded-xl bg-white border border-[#D8CCAE] text-sm font-bold text-[#0D4A30] hover:bg-[#F5EEDB] transition-colors">
+                <button disabled className="h-12 rounded-xl bg-white border border-[#D8CCAE] text-sm font-bold text-[#0D4A30] opacity-60 cursor-not-allowed">
                   Google
                 </button>
-                <button className="h-12 rounded-xl bg-white border border-[#D8CCAE] text-sm font-bold text-[#0D4A30] hover:bg-[#F5EEDB] transition-colors">
+                <button disabled className="h-12 rounded-xl bg-white border border-[#D8CCAE] text-sm font-bold text-[#0D4A30] opacity-60 cursor-not-allowed">
                   GitHub
                 </button>
               </div>
@@ -43,15 +117,31 @@ const LoginPage: React.FC = () => {
                 <div className="h-px flex-1 bg-[#E5DBC1]" />
               </div>
 
-              <form className="space-y-5">
+              {!isSupabaseConfigured && (
+                <div className="mt-8 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-amber-900 text-sm">
+                  Supabase is not configured. Set `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY`, and `VITE_ADMIN_EMAILS`.
+                </div>
+              )}
+
+              {state.status === 'error' && (
+                <div className="mt-8 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-red-900 text-sm">
+                  {state.message}
+                </div>
+              )}
+
+              <form onSubmit={onSubmit} className="space-y-5 mt-8">
                 <div>
                   <label className="block text-xs font-bold tracking-[0.12em] uppercase text-slate-500 mb-2">
                     Username or Email
                   </label>
                   <input
-                    type="text"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@lifewood.com"
                     className="w-full h-12 rounded-xl bg-white border border-[#D8CCAE] px-4 text-[#0D4A30] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    autoComplete="email"
+                    required
                   />
                 </div>
 
@@ -64,16 +154,26 @@ const LoginPage: React.FC = () => {
                   </div>
                   <input
                     type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     placeholder="Password"
                     className="w-full h-12 rounded-xl bg-white border border-[#D8CCAE] px-4 text-[#0D4A30] placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                    autoComplete="current-password"
+                    required
                   />
                 </div>
 
                 <button
-                  type="button"
-                  className="w-full h-12 rounded-xl bg-[#0D4A30] text-white font-black tracking-wide hover:bg-[#D4AF37] hover:text-[#0D4A30] transition-colors"
+                  type="submit"
+                  disabled={!canSubmit}
+                  className={[
+                    'w-full h-12 rounded-xl font-black tracking-wide transition-colors',
+                    canSubmit
+                      ? 'bg-[#0D4A30] text-white hover:bg-[#D4AF37] hover:text-[#0D4A30]'
+                      : 'bg-[#0D4A30]/60 text-white/70 cursor-not-allowed',
+                  ].join(' ')}
                 >
-                  Sign In
+                  {state.status === 'loading' ? 'Signing In…' : 'Sign In'}
                 </button>
               </form>
             </div>

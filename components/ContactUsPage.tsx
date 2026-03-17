@@ -1,7 +1,59 @@
 
-import React from 'react';
+import React, { useMemo, useState } from 'react';
+import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+
+type SubmitState =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'success' }
+  | { status: 'error'; message: string };
 
 const ContactUsPage: React.FC = () => {
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [message, setMessage] = useState('');
+  const [submitState, setSubmitState] = useState<SubmitState>({ status: 'idle' });
+
+  const canSubmit = useMemo(() => {
+    if (submitState.status === 'submitting') return false;
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim());
+    return Boolean(name.trim() && emailValid && message.trim());
+  }, [email, message, name, submitState.status]);
+
+  const onSubmit = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setSubmitState({ status: 'idle' });
+
+    if (!isSupabaseConfigured) {
+      setSubmitState({ status: 'error', message: 'Supabase is not configured.' });
+      return;
+    }
+
+    if (!canSubmit) {
+      setSubmitState({ status: 'error', message: 'Please complete all fields.' });
+      return;
+    }
+
+    setSubmitState({ status: 'submitting' });
+
+    const res = await supabase.from('contact_messages').insert({
+      name: name.trim(),
+      email: email.trim(),
+      message: message.trim(),
+      source: 'website',
+    });
+
+    if (res.error) {
+      setSubmitState({ status: 'error', message: res.error.message });
+      return;
+    }
+
+    setSubmitState({ status: 'success' });
+    setName('');
+    setEmail('');
+    setMessage('');
+  };
+
   return (
     <div className="bg-[#FCFBF7] min-h-screen flex items-center justify-center py-24 px-6 relative overflow-hidden">
       {/* Abstract Background Accents */}
@@ -48,13 +100,34 @@ const ContactUsPage: React.FC = () => {
                  <div className="absolute -bottom-24 -right-16 w-80 h-80 rounded-full bg-emerald-200/20 blur-3xl" />
               </div>
 
-              <div className="relative z-10 space-y-8">
+              <form onSubmit={onSubmit} className="relative z-10 space-y-8">
+                 {!isSupabaseConfigured && (
+                   <div className="rounded-2xl border border-amber-500/35 bg-amber-500/10 px-5 py-4 text-amber-50 text-sm">
+                     Submissions are disabled until Supabase is configured.
+                   </div>
+                 )}
+
+                 {submitState.status === 'error' && (
+                   <div className="rounded-2xl border border-red-500/35 bg-red-500/10 px-5 py-4 text-red-50 text-sm">
+                     {submitState.message}
+                   </div>
+                 )}
+
+                 {submitState.status === 'success' && (
+                   <div className="rounded-2xl border border-emerald-500/35 bg-emerald-500/10 px-5 py-4 text-emerald-50 text-sm">
+                     Message sent. Thank you — we’ll get back to you soon.
+                   </div>
+                 )}
+
                  <div className="space-y-2">
                     <label className="text-[10px] font-black uppercase tracking-[0.3em] text-[#D4AF37]">Name</label>
                     <input 
                       type="text" 
                       placeholder="Your full name" 
+                      value={name}
+                      onChange={(e) => setName(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/20 focus:outline-none focus:border-[#D4AF37] focus:bg-white/10 transition-all" 
+                      required
                     />
                  </div>
                  <div className="space-y-2">
@@ -62,7 +135,10 @@ const ContactUsPage: React.FC = () => {
                     <input 
                       type="email" 
                       placeholder="email@company.com" 
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/20 focus:outline-none focus:border-[#D4AF37] focus:bg-white/10 transition-all" 
+                      required
                     />
                  </div>
                  <div className="space-y-2">
@@ -70,15 +146,27 @@ const ContactUsPage: React.FC = () => {
                     <textarea 
                       rows={4}
                       placeholder="How can we collaborate?" 
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
                       className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder-white/20 focus:outline-none focus:border-[#D4AF37] focus:bg-white/10 transition-all resize-none" 
+                      required
                     ></textarea>
                  </div>
 
-                 <button className="w-full bg-[#F7B955] hover:bg-[#D4AF37] text-[#012620] py-6 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl group active:scale-[0.98]">
-                    Send Message
+                 <button
+                   type="submit"
+                   disabled={!canSubmit || !isSupabaseConfigured}
+                   className={[
+                     'w-full py-6 rounded-2xl font-black uppercase tracking-widest text-xs transition-all shadow-2xl group active:scale-[0.98]',
+                     canSubmit && isSupabaseConfigured
+                       ? 'bg-[#F7B955] hover:bg-[#D4AF37] text-[#012620]'
+                       : 'bg-white/10 text-white/50 cursor-not-allowed',
+                   ].join(' ')}
+                 >
+                    {submitState.status === 'submitting' ? 'Sending…' : 'Send Message'}
                  </button>
 
-              </div>
+              </form>
            </div>
         </div>
       </div>
