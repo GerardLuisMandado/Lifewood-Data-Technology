@@ -41,3 +41,26 @@ You can create your admin user in Supabase Auth UI, or via the helper script (re
 - Required env vars for the script: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAIL`, `ADMIN_PASSWORD`
 
 Tip: start from `scripts/create-admin.env.example` and copy it to `scripts/create-admin.env.local`, then set env vars in your shell before running the script.
+
+## EmailJS setup
+
+The admin dashboard can send candidate emails for:
+
+- Hired
+- Interview schedule
+- Rejection
+
+This project is set up for the EmailJS free tier using only 2 templates:
+
+1. A hired template
+2. A flexible update template used for both interview scheduling and rejection
+
+Add these env vars to `.env.local`:
+
+- `VITE_EMAILJS_SERVICE_ID=service_d7glscr`
+- `VITE_EMAILJS_PUBLIC_KEY=...`
+- `VITE_EMAILJS_TEMPLATE_HIRED=...`
+- `VITE_EMAILJS_TEMPLATE_UPDATE=...`
+
+Template HTML files are in `email-templates/` and setup notes are in `email-templates/README.md`.
+Set the EmailJS template subject field to `{{subject}}` so the dashboard can control it programmatically.

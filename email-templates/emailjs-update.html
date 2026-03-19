@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Status Update</title>
+  </head>
+  <body style="margin:0;padding:0;background:#F5EEDB;">
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:#F5EEDB;padding:24px 0;">
+      <tr>
+        <td align="center" style="padding:0 12px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="640" style="max-width:640px;width:100%;background:#133020;border-radius:24px;overflow:hidden;">
+            <tr>
+              <td style="padding:22px 24px;background:#046241;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%">
+                  <tr>
+                    <td style="vertical-align:middle;">
+                      <img
+                        src="https://framerusercontent.com/images/Ca8ppNsvJIfTsWEuHr50gvkDow.png?scale-down-to=512&width=2624&height=474"
+                        alt="Lifewood"
+                        style="height:28px;width:auto;display:block;"
+                      />
+                    </td>
+                    <td align="right" style="vertical-align:middle;">
+                      <span style="display:inline-block;padding:10px 14px;border-radius:999px;background:rgba(249,247,247,0.12);border:1px solid rgba(249,247,247,0.18);color:#F9F7F7;font-family:Inter,Arial,sans-serif;font-size:10px;font-weight:800;letter-spacing:0.25em;text-transform:uppercase;">
+                        Update
+                      </span>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:26px 24px 18px 24px;">
+                <div style="font-family:Inter,Arial,sans-serif;color:#F9F7F7;">
+                  <div style="font-size:12px;font-weight:900;letter-spacing:0.25em;text-transform:uppercase;color:#FFB347;">
+                    {{update_category}}
+                  </div>
+                  <h1 style="margin:10px 0 0 0;font-size:28px;line-height:1.15;font-weight:900;">
+                    {{update_title}}
+                  </h1>
+                  <p style="margin:14px 0 0 0;font-size:15px;line-height:1.7;color:rgba(249,247,247,0.82);">
+                    Hi {{candidate_name}},<br />
+                    {{update_message}}
+                  </p>
+                </div>
+              </td>
+            </tr>
+
+            <!-- Interview block -->
+            <tr style="{{interview_block_style}}">
+              <td style="padding:0 24px 16px 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:rgba(4,98,65,0.18);border:1px solid rgba(249,247,247,0.12);border-radius:18px;">
+                  <tr>
+                    <td style="padding:16px 16px;">
+                      <div style="font-family:Inter,Arial,sans-serif;color:#F9F7F7;">
+                        <div style="font-size:12px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:rgba(249,247,247,0.70);">
+                          Interview Details
+                        </div>
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="margin-top:10px;">
+                          <tr>
+                            <td style="padding:2px 0;color:rgba(249,247,247,0.78);font-size:13px;font-family:Inter,Arial,sans-serif;width:120px;">
+                              Type
+                            </td>
+                            <td style="padding:2px 0;color:#F9F7F7;font-size:13px;font-family:Inter,Arial,sans-serif;font-weight:800;">
+                              {{interview_type}}
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:2px 0;color:rgba(249,247,247,0.78);font-size:13px;font-family:Inter,Arial,sans-serif;">
+                              Date / time
+                            </td>
+                            <td style="padding:2px 0;color:#F9F7F7;font-size:13px;font-family:Inter,Arial,sans-serif;font-weight:800;">
+                              {{interview_datetime}} ({{interview_timezone}})
+                            </td>
+                          </tr>
+                          <tr>
+                            <td style="padding:2px 0;color:rgba(249,247,247,0.78);font-size:13px;font-family:Inter,Arial,sans-serif;">
+                              Location / link
+                            </td>
+                            <td style="padding:2px 0;color:#F9F7F7;font-size:13px;font-family:Inter,Arial,sans-serif;font-weight:800;">
+                              {{interview_location}}
+                            </td>
+                          </tr>
+                        </table>
+
+                        <div style="margin-top:10px;color:rgba(249,247,247,0.82);font-size:13px;line-height:1.7;font-family:Inter,Arial,sans-serif;">
+                          {{interview_notes}}
+                        </div>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- Rejection block -->
+            <tr style="{{rejection_block_style}}">
+              <td style="padding:0 24px 16px 24px;">
+                <table role="presentation" cellpadding="0" cellspacing="0" border="0" width="100%" style="background:rgba(255,195,112,0.12);border:1px solid rgba(255,195,112,0.26);border-radius:18px;">
+                  <tr>
+                    <td style="padding:16px 16px;">
+                      <div style="font-family:Inter,Arial,sans-serif;color:#F9F7F7;">
+                        <div style="font-size:12px;font-weight:900;letter-spacing:0.14em;text-transform:uppercase;color:rgba(249,247,247,0.70);">
+                          Note
+                        </div>
+                        <p style="margin:10px 0 0 0;font-size:13px;line-height:1.7;color:rgba(249,247,247,0.82);">
+                          {{rejection_note}}
+                        </p>
+                      </div>
+                    </td>
+                  </tr>
+                </table>
+              </td>
+            </tr>
+
+            <!-- CTA button -->
+            <tr style="{{action_block_style}}">
+              <td align="left" style="padding:6px 24px 26px 24px;">
+                <a
+                  href="{{action_url}}"
+                  style="display:inline-block;background:#FFB347;color:#133020;text-decoration:none;font-family:Inter,Arial,sans-serif;font-size:12px;font-weight:900;letter-spacing:0.22em;text-transform:uppercase;padding:14px 18px;border-radius:16px;border:1px solid rgba(255,195,112,0.55);"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {{action_label}}
+                </a>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:0 24px 26px 24px;">
+                <div style="font-family:Inter,Arial,sans-serif;color:rgba(249,247,247,0.80);font-size:13px;line-height:1.7;">
+                  If you have questions, reply to this email or contact us at
+                  <a href="mailto:{{support_email}}" style="color:#FFC370;text-decoration:none;font-weight:800;">{{support_email}}</a>.
+                </div>
+                <div style="height:14px;"></div>
+                <div style="font-family:Inter,Arial,sans-serif;color:rgba(249,247,247,0.78);font-size:13px;line-height:1.7;">
+                  <strong style="color:#F9F7F7;">{{signature_name}}</strong><br />
+                  {{signature_title}}<br />
+                  Lifewood
+                </div>
+              </td>
+            </tr>
+
+            <tr>
+              <td style="padding:14px 24px;background:rgba(0,0,0,0.18);border-top:1px solid rgba(249,247,247,0.10);">
+                <div style="font-family:Inter,Arial,sans-serif;font-size:11px;color:rgba(249,247,247,0.60);line-height:1.6;">
+                  This email was sent to {{to_email}} about your application for {{position}}.
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
+

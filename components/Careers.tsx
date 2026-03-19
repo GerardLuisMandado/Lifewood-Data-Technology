@@ -1,5 +1,6 @@
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { CAREER_COUNTRY_OPTIONS, CAREER_POSITION_OPTIONS } from '../lib/careerOptions';
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
 
 type CareerApplicationFormState = {
@@ -58,34 +59,9 @@ const Careers: React.FC = () => {
     []
   );
 
-  const positionOptions = useMemo(
-    () => [
-      'Data Annotator',
-      'Data Collector',
-      'Quality Analyst',
-      'Team Lead',
-      'Project Coordinator',
-      'Project Manager',
-      'AI/ML Support',
-      'Other',
-    ],
-    []
-  );
+  const positionOptions = useMemo(() => [...CAREER_POSITION_OPTIONS], []);
 
-  const countryOptions = useMemo(
-    () => [
-      'Philippines',
-      'Australia',
-      'United States',
-      'Canada',
-      'United Kingdom',
-      'Singapore',
-      'Japan',
-      'United Arab Emirates',
-      'Other',
-    ],
-    []
-  );
+  const countryOptions = useMemo(() => [...CAREER_COUNTRY_OPTIONS], []);
 
   useEffect(() => {
     const imageEl = teamImageRef.current;

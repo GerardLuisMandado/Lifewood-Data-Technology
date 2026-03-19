@@ -2,19 +2,38 @@
 import React from 'react';
 
 const PartnerLogos: React.FC = () => {
-  const partnersTop = [
-    { name: 'BYU Pathway', logo: 'BYU' },
-    { name: 'Ancestry', logo: 'ancestry' },
-    { name: 'FamilySearch', logo: 'FamilySearch' },
-    { name: 'Google Cloud', logo: 'Google' },
-    { name: 'AWS', logo: 'AWS' }
+  const logosTop = [
+    {
+      alt: 'Client and partner collage 1',
+      src: 'https://framerusercontent.com/images/Yq2A1QFJLXgGQ3b7NZPthsD9RBk.png?scale-down-to=512&width=1920&height=1080'
+    },
+    {
+      alt: 'Client and partner collage 2',
+      src: 'https://framerusercontent.com/images/m37jhLfPRl449iXOe8op7cY68c.png?scale-down-to=512&width=1920&height=1080'
+    },
+    {
+      alt: 'Client and partner collage 3',
+      src: 'https://framerusercontent.com/images/HWbvpkExIBUbdXEGILLSX4PTcEE.png?scale-down-to=512&width=1920&height=551'
+    },
+    {
+      alt: 'Client and partner collage 4',
+      src: 'https://framerusercontent.com/images/cjJDncfOy71yWizT3ZRdsZB4W0.png?scale-down-to=512&width=1920&height=1080'
+    }
   ];
-  const partnersBottom = [
-    { name: 'Microsoft Azure', logo: 'Azure' },
-    { name: 'OpenAI', logo: 'OpenAI' },
-    { name: 'NVIDIA', logo: 'NVIDIA' },
-    { name: 'Meta AI', logo: 'Meta' },
-    { name: 'Oracle', logo: 'Oracle' }
+
+  const logosBottom = [
+    {
+      alt: 'Client and partner collage 5',
+      src: 'https://framerusercontent.com/images/5mxPuoDvu4IebUtQtNowrZOfWSg.png?scale-down-to=1024&width=1920&height=1080'
+    },
+    {
+      alt: 'Client and partner collage 6',
+      src: 'https://framerusercontent.com/images/2rRd2Mk1HzeDgPbL0e8wwkUPo.png?scale-down-to=512&width=1920&height=1080'
+    },
+    {
+      alt: 'Client and partner collage 7',
+      src: 'https://framerusercontent.com/images/RyIkooWlUn6nQYbljETePWzd2Ac.png?scale-down-to=512&width=1243&height=713'
+    }
   ];
 
   return (
@@ -31,47 +50,59 @@ const PartnerLogos: React.FC = () => {
         <p className="text-center text-slate-400 text-xs font-black uppercase tracking-[0.3em] mb-12">Empowering Global Innovators</p>
         <div className="overflow-hidden w-full">
           <div
-            className="flex items-center gap-24 opacity-40 grayscale hover:grayscale-0 transition-all duration-700 whitespace-nowrap animate-marquee-left"
+            className="flex items-center w-max gap-20 md:gap-24 opacity-100 whitespace-nowrap animate-marquee-left"
             style={{ animation: 'marquee-left 20s linear infinite' }}
           >
-            {partnersTop.concat(partnersTop).map((p, idx) => (
+            {logosTop.concat(logosTop).map((logo, idx) => (
               <div
-                key={p.name + idx}
-                className="text-3xl font-black text-[#012620] tracking-tighter hover:text-[#D4AF37] transition-colors cursor-default select-none uppercase px-8"
+                key={`${logo.src}-${idx}`}
+                className="px-8 py-2"
               >
-                {p.name}
+                <img
+                  src={logo.src}
+                  alt={logo.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-16 md:h-20 lg:h-24 w-auto object-contain opacity-80 grayscale select-none pointer-events-none"
+                />
               </div>
             ))}
           </div>
         </div>
         <div className="overflow-hidden w-full mt-8">
           <div
-            className="flex items-center gap-24 opacity-35 grayscale hover:grayscale-0 transition-all duration-700 whitespace-nowrap animate-marquee-right"
+            className="flex items-center w-max gap-20 md:gap-24 opacity-100 whitespace-nowrap animate-marquee-right"
             style={{ animation: 'marquee-right 22s linear infinite' }}
           >
-            {partnersBottom.concat(partnersBottom).map((p, idx) => (
+            {logosBottom.concat(logosBottom).map((logo, idx) => (
               <div
-                key={p.name + idx}
-                className="text-3xl font-black text-[#0D4A30] tracking-tighter hover:text-[#D4AF37] transition-colors cursor-default select-none uppercase px-8"
+                key={`${logo.src}-${idx}`}
+                className="px-8 py-2"
               >
-                {p.name}
+                <img
+                  src={logo.src}
+                  alt={logo.alt}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-16 md:h-20 lg:h-24 w-auto object-contain opacity-80 grayscale select-none pointer-events-none"
+                />
               </div>
             ))}
           </div>
         </div>
         <style>{`
           @keyframes marquee-left {
-            0% { transform: translateX(0); }
-            100% { transform: translateX(-50%); }
+            from { transform: translate3d(0, 0, 0); }
+            to { transform: translate3d(-50%, 0, 0); }
           }
           @keyframes marquee-right {
-            0% { transform: translateX(-50%); }
-            100% { transform: translateX(0); }
+            from { transform: translate3d(-50%, 0, 0); }
+            to { transform: translate3d(0, 0, 0); }
           }
           .animate-marquee-left,
           .animate-marquee-right {
             will-change: transform;
-            min-width: 200%;
+            backface-visibility: hidden;
           }
         `}</style>
       </div>

@@ -59,16 +59,25 @@ const App: React.FC = () => {
       const hash = rawHash.replace(/\/+$/, '');
       const path = window.location.pathname.replace(/\/+$/, '');
 
-      if (path === '/login') {
+      const isExplicitLoginHash = hash === '#/login' || hash === '#login';
+      const isExplicitDashboardHash = hash === '#/dashboard';
+      const isLoginPath = path === '/login';
+      const isDashboardPath = path === '/dashboard';
+
+      if (isLoginPath && (hash === '' || isExplicitLoginHash)) {
         setCurrentPage('login');
         scrollToTop();
         return;
       }
 
-      if (path === '/dashboard') {
+      if (isDashboardPath && (hash === '' || isExplicitDashboardHash)) {
         setCurrentPage('dashboard');
         scrollToTop();
         return;
+      }
+
+      if ((isLoginPath || isDashboardPath) && rawHash) {
+        window.history.replaceState({}, '', `/${rawHash}`);
       }
       if (hash === '#/ai-services') {
         setCurrentPage('services');
@@ -109,7 +118,7 @@ const App: React.FC = () => {
       } else if (hash === '#/dashboard') {
         setCurrentPage('dashboard');
         scrollToTop();
-      } else if (hash === '#/login' || hash === '#login') {
+      } else if (isExplicitLoginHash) {
         setCurrentPage('login');
         scrollToTop();
       } else {
@@ -177,10 +186,11 @@ const App: React.FC = () => {
   }, [displayPage]);
 
   const isAdminUiPage = displayPage === 'login' || displayPage === 'dashboard';
+  const showNavbar = currentPage !== 'dashboard';
 
   return (
     <div className="min-h-screen flex flex-col selection:bg-[#D4AF37]/30">
-      <Navbar scrolled={scrolled} currentPage={currentPage} />
+      {showNavbar && <Navbar scrolled={scrolled} currentPage={currentPage} />}
       
       <main className="flex-grow">
         <div className={`transition-all duration-200 ease-out ${isPageVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-2'}`}>

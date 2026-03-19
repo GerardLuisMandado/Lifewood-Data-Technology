@@ -1,6 +1,5 @@
 
-import React, { useEffect, useMemo, useState } from 'react';
-import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
+import React, { useState } from 'react';
 
 
 interface NavbarProps {
@@ -23,49 +22,13 @@ interface NavLink {
 const Navbar: React.FC<NavbarProps> = ({ scrolled, currentPage }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
-  const [isAdmin, setIsAdmin] = useState(false);
 
-  const adminEmails = useMemo(
-    () =>
-      (import.meta.env.VITE_ADMIN_EMAILS ?? '')
-        .split(',')
-        .map((e) => e.trim().toLowerCase())
-        .filter(Boolean),
-    []
-  );
-
-  const isAdminEmail = (email?: string | null) => {
-    if (!email) return false;
-    if (adminEmails.length === 0) return false;
-    return adminEmails.includes(email.toLowerCase());
-  };
-
-  useEffect(() => {
-    if (!isSupabaseConfigured) return;
-
-    const sync = async () => {
-      const { data } = await supabase.auth.getSession();
-      setIsAdmin(isAdminEmail(data.session?.user?.email ?? null));
-    };
-
-    void sync();
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      setIsAdmin(isAdminEmail(session?.user?.email ?? null));
-    });
-
-    return () => sub.subscription.unsubscribe();
-  }, [adminEmails]);
-
-  const onLogout = async () => {
-    try {
-      await supabase.auth.signOut();
-    } finally {
-      setIsOpen(false);
-      window.history.pushState({}, '', '/');
-      window.location.hash = '#/';
-      window.dispatchEvent(new Event('popstate'));
-    }
+  const goToLogin = () => {
+    setIsOpen(false);
+    setActiveDropdown(null);
+    window.history.pushState({}, '', '/login');
+    window.location.hash = '';
+    window.dispatchEvent(new Event('popstate'));
   };
 
   const navLinks: NavLink[] = [
@@ -150,7 +113,14 @@ const Navbar: React.FC<NavbarProps> = ({ scrolled, currentPage }) => {
 
       <div className="max-w-[1440px] mx-auto px-6 flex justify-between items-center relative z-10">
         <div className="flex items-center gap-3 shrink-0">
-          <a href="#/" className="group relative flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95">
+          <a
+            href="#/"
+            onDoubleClick={(e) => {
+              e.preventDefault();
+              goToLogin();
+            }}
+            className="group relative flex items-center justify-center transition-all duration-300 hover:scale-110 active:scale-95"
+          >
             <img
               src="https://framerusercontent.com/images/BZSiFYgRc4wDUAuEybhJbZsIBQY.png?width=1519&height=429"
               alt="Lifewood Logo"
@@ -180,17 +150,6 @@ const Navbar: React.FC<NavbarProps> = ({ scrolled, currentPage }) => {
               )}
             </div>
           )})}
-          <a
-            href={isAdmin ? undefined : '#/login'}
-            onClick={isAdmin ? (e) => { e.preventDefault(); void onLogout(); } : undefined}
-            className={`ml-4 px-6 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg active:scale-95 ${
-              isAdmin || currentPage === 'login'
-                ? 'bg-[#F7B955] text-[#0D4A30]'
-                : 'bg-[#0D4A30] text-white hover:bg-[#F7B955] hover:text-[#0D4A30]'
-            }`}
-          >
-            {isAdmin ? 'Logout' : 'Login'}
-          </a>
         </div>
 
         <button className="xl:hidden p-2 text-black hover:bg-black/5 rounded-lg transition-colors" onClick={() => setIsOpen(!isOpen)}>
@@ -221,20 +180,6 @@ const Navbar: React.FC<NavbarProps> = ({ scrolled, currentPage }) => {
               )}
             </div>
           ))}
-          <a
-            href={isAdmin ? undefined : '#/login'}
-            onClick={(e) => {
-              if (isAdmin) {
-                e.preventDefault();
-                void onLogout();
-                return;
-              }
-              setIsOpen(false);
-            }}
-            className="block w-full mt-4 bg-[#0D4A30] text-white py-4 rounded-xl font-black uppercase tracking-widest text-xs shadow-xl hover:bg-[#F7B955] hover:text-[#0D4A30] transition-all text-center"
-          >
-            {isAdmin ? 'Logout' : 'Login'}
-          </a>
         </div>
       </div>
     </nav>
