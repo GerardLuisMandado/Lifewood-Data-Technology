@@ -13,32 +13,44 @@ type Office = {
   lng: number;
 };
 
+type ImpactImage = {
+  src: string;
+  alt: string;
+};
+
+type ImpactSection = {
+  title: string;
+  desc: string;
+  image?: string;
+  alt?: string;
+  images?: ImpactImage[];
+};
+
 const globalOfficeMapLocations: Office[] = [
-  { name: 'Kuala Lumpur, Malaysia', lat: 3.139, lng: 101.6869 },
-  { name: 'Singapore, Singapore', lat: 1.3521, lng: 103.8198 },
-  { name: 'Cebu, Philippines', lat: 10.3157, lng: 123.8854 },
-  { name: 'Hanoi, Vietnam', lat: 21.0278, lng: 105.8342 },
-  { name: 'Jakarta, Indonesia', lat: -6.2088, lng: 106.8456 },
-  { name: 'Dhaka, Bangladesh', lat: 23.8103, lng: 90.4125 },
-  { name: 'Kolkata, India', lat: 22.5726, lng: 88.3639 },
-  { name: 'Hong Kong, China (SAR)', lat: 22.3193, lng: 114.1694 },
-  { name: 'Shenzhen, China', lat: 22.5431, lng: 114.0579 },
-  { name: 'Dongguan, China', lat: 23.0207, lng: 113.7518 },
-  { name: 'Meizhou, China', lat: 24.2991, lng: 116.1212 },
-  { name: 'Dubai, UAE', lat: 25.2048, lng: 55.2708 },
-  { name: 'Lagos, Nigeria', lat: 6.5244, lng: 3.3792 },
-  { name: 'Cotonou, Benin', lat: 6.3703, lng: 2.3912 },
-  { name: 'Belgrade, Serbia', lat: 44.7866, lng: 20.4489 },
-  { name: 'Helsinki, Finland', lat: 60.1699, lng: 24.9384 },
-  { name: 'Hannover, Germany', lat: 52.3759, lng: 9.732 },
-  { name: 'London, United Kingdom', lat: 51.5072, lng: -0.1276 },
-  { name: 'Seattle, United States', lat: 47.6062, lng: -122.3321 },
-  { name: 'San Jose, United States', lat: 37.3382, lng: -121.8863 },
-  { name: 'Sao Paulo, Brazil', lat: -23.5505, lng: -46.6333 }
+  { name: 'Sierra Leone', lat: 8.4606, lng: -11.7799 },
+  { name: 'Liberia', lat: 6.4281, lng: -9.4295 },
+  { name: "Cote d'Ivoire", lat: 7.54, lng: -5.5471 },
+  { name: 'Ghana', lat: 7.9465, lng: -1.0232 },
+  { name: 'Togo', lat: 8.6195, lng: 0.8248 },
+  { name: 'Benin', lat: 9.3077, lng: 2.3158 },
+  { name: 'Nigeria', lat: 9.082, lng: 8.6753 },
+  { name: 'Niger', lat: 17.6078, lng: 8.0817 },
+  { name: 'Egypt', lat: 26.8206, lng: 30.8025 },
+  { name: 'Ethiopia', lat: 9.145, lng: 40.4897 },
+  { name: 'Kenya', lat: -0.0236, lng: 37.9062 },
+  { name: 'Tanzania', lat: -6.369, lng: 34.8888 },
+  { name: 'Democratic Republic of the Congo', lat: -2.8797, lng: 23.656 },
+  { name: 'Zambia', lat: -13.1339, lng: 27.8493 },
+  { name: 'Mozambique', lat: -18.6657, lng: 35.5296 },
+  { name: 'Namibia', lat: -22.9576, lng: 18.4904 },
+  { name: 'South Africa', lat: -30.5595, lng: 22.9375 },
+  { name: 'Madagascar', lat: -18.7669, lng: 46.8691 },
+  { name: 'Bangladesh', lat: 23.685, lng: 90.3563 }
 ];
 
 const LEAFLET_CSS_ID = 'lw-leaflet-css';
 const LEAFLET_SCRIPT_ID = 'lw-leaflet-script';
+const IMAGE_REVEAL_OBSERVER_OPTIONS = { threshold: 0.12, rootMargin: '0px 0px -6% 0px' } as const;
 
 const ensureLeaflet = async (): Promise<void> => {
   if (window.L) return;
@@ -77,7 +89,7 @@ const Philanthropy: React.FC = () => {
   const mapRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<any>(null);
   const heroImageRef = useRef<HTMLImageElement | null>(null);
-  const impactImageRefs = useRef<(HTMLImageElement | null)[]>([]);
+  const impactImageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const allOffices = useMemo(() => globalOfficeMapLocations, []);
   const [isHeroImageVisible, setIsHeroImageVisible] = useState(false);
   const [visibleImpactImages, setVisibleImpactImages] = useState<Record<number, boolean>>({});
@@ -97,7 +109,7 @@ const Philanthropy: React.FC = () => {
         minZoom: 2,
         maxZoom: 8,
         worldCopyJump: true
-      }).setView([18, 15], 2);
+      }).setView([10, 22], 3);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors'
@@ -119,7 +131,7 @@ const Philanthropy: React.FC = () => {
       });
 
       if (bounds.isValid()) {
-        map.fitBounds(bounds.pad(0.2), { maxZoom: 2 });
+        map.fitBounds(bounds.pad(0.08), { maxZoom: 3 });
       }
 
       mapInstanceRef.current = map;
@@ -156,7 +168,7 @@ const Philanthropy: React.FC = () => {
         setIsHeroImageVisible(true);
         observer.unobserve(heroImage);
       },
-      { threshold: 0.35, rootMargin: '0px 0px -10% 0px' }
+      IMAGE_REVEAL_OBSERVER_OPTIONS
     );
 
     observer.observe(heroImage);
@@ -167,7 +179,7 @@ const Philanthropy: React.FC = () => {
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
-          if (!entry.isIntersecting) return;
+          if (!entry.isIntersecting && entry.intersectionRatio <= 0) return;
           const idx = Number((entry.target as HTMLElement).dataset.impactIndex);
           if (!Number.isNaN(idx)) {
             setVisibleImpactImages((prev) => (prev[idx] ? prev : { ...prev, [idx]: true }));
@@ -175,7 +187,7 @@ const Philanthropy: React.FC = () => {
           observer.unobserve(entry.target);
         });
       },
-      { threshold: 0.35, rootMargin: '0px 0px -10% 0px' }
+      IMAGE_REVEAL_OBSERVER_OPTIONS
     );
 
     impactImageRefs.current.forEach((img) => {
@@ -185,11 +197,20 @@ const Philanthropy: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-  const impactSections = [
+  const impactSections: ImpactSection[] = [
     {
       title: 'Impact',
       desc: 'Through purposeful partnership and sustainable investment, we empower communities across Africa and the Indian sub-continent.',
-      image: 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?auto=format&fit=crop&q=80&w=800',
+      images: [
+        {
+          src: 'https://images.pexels.com/photos/34735702/pexels-photo-34735702.jpeg?auto=compress&cs=tinysrgb&w=1200',
+          alt: 'Adults in traditional African attire smiling together in a community portrait.',
+        },
+        {
+          src: 'https://images.pexels.com/photos/8819325/pexels-photo-8819325.jpeg?auto=compress&cs=tinysrgb&w=1200',
+          alt: 'South Asian adults in traditional clothing standing together during a community celebration.',
+        },
+      ],
     },
     {
       title: 'Partnership',
@@ -287,18 +308,38 @@ const Philanthropy: React.FC = () => {
               </p>
             </div>
             <div className="md:w-2/3">
-              <div className="rounded-[3rem] overflow-hidden shadow-2xl h-[450px]">
-                <img
-                  ref={(el) => {
-                    impactImageRefs.current[idx] = el;
-                  }}
-                  data-impact-index={idx}
-                  src={section.image}
-                  className={`w-full h-full object-cover transition-all duration-700 ${
-                    visibleImpactImages[idx] ? 'grayscale-0' : 'grayscale'
-                  }`}
-                  alt={section.title}
-                />
+              <div
+                ref={(el) => {
+                  impactImageRefs.current[idx] = el;
+                }}
+                data-impact-index={idx}
+                className="rounded-[3rem] overflow-hidden shadow-2xl h-[450px]"
+              >
+                {section.images ? (
+                  <div
+                    className="grid h-full grid-cols-1 md:grid-cols-2 gap-px bg-white/10"
+                  >
+                    {section.images.map((image) => (
+                      <div key={image.src} className="relative h-full overflow-hidden">
+                        <img
+                          src={image.src}
+                          className={`w-full h-full object-cover transition-all duration-700 ${
+                            visibleImpactImages[idx] ? 'grayscale-0' : 'grayscale'
+                          }`}
+                          alt={image.alt}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <img
+                    src={section.image}
+                    className={`w-full h-full object-cover transition-all duration-700 ${
+                      visibleImpactImages[idx] ? 'grayscale-0' : 'grayscale'
+                    }`}
+                    alt={section.alt ?? section.title}
+                  />
+                )}
               </div>
             </div>
           </div>

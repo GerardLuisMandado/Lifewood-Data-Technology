@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { CAREER_POSITION_OPTIONS } from '../lib/careerOptions';
+import { CAREER_COUNTRY_OPTIONS, CAREER_POSITION_OPTIONS } from '../lib/careerOptions';
 import { EMAILJS_DEFAULT_SERVICE_ID, sendEmailJs } from '../lib/emailjsClient';
 import { isSupabaseConfigured, supabase } from '../lib/supabaseClient';
 
@@ -19,6 +19,7 @@ type DashboardRow = {
   cv_bucket: string;
   cv_path: string;
   source: string;
+  remarks: string;
 };
 
 type ContactMessageRow = {
@@ -36,6 +37,82 @@ type DrawerState =
 
 type HiringStage = 'cv_check' | 'ai_interview' | 'face_to_face';
 type HiringProgress = { stage: HiringStage; hired: boolean; rejected: boolean };
+type CvPreviewState = {
+  row: DashboardRow;
+  status: 'loading' | 'ready' | 'error';
+  url: string | null;
+};
+type ManualApplicantFormState = {
+  firstName: string;
+  lastName: string;
+  gender: '' | 'Female' | 'Male' | 'Non-binary' | 'Prefer not to say';
+  age: string;
+  phoneCountryCode: string;
+  phoneNumber: string;
+  email: string;
+  positionApplied: string;
+  country: string;
+  currentAddress: string;
+  cvFile: File | null;
+};
+type ManualApplicantSubmitState =
+  | { status: 'idle' }
+  | { status: 'submitting' }
+  | { status: 'error'; message: string };
+
+const createEmptyManualApplicantForm = (): ManualApplicantFormState => ({
+  firstName: '',
+  lastName: '',
+  gender: '',
+  age: '',
+  phoneCountryCode: '+63',
+  phoneNumber: '',
+  email: '',
+  positionApplied: '',
+  country: '',
+  currentAddress: '',
+  cvFile: null,
+});
+
+const hasApplicantCv = (row: DashboardRow) => Boolean(row.cv_bucket?.trim() && row.cv_path?.trim());
+const REMARKS_STORAGE_PREFIX = 'lw_admin_applicant_remarks_';
+
+const readLocalApplicantRemarks = (id: string) => {
+  try {
+    return window.localStorage.getItem(`${REMARKS_STORAGE_PREFIX}${id}`) ?? '';
+  } catch {
+    return '';
+  }
+};
+
+const writeLocalApplicantRemarks = (id: string, remarks: string) => {
+  try {
+    window.localStorage.setItem(`${REMARKS_STORAGE_PREFIX}${id}`, remarks);
+  } catch {
+    // ignore
+  }
+};
+
+const removeLocalApplicantRemarks = (id: string) => {
+  try {
+    window.localStorage.removeItem(`${REMARKS_STORAGE_PREFIX}${id}`);
+  } catch {
+    // ignore
+  }
+};
+
+const normalizeDashboardRow = (row: Partial<DashboardRow> & { id: string }) =>
+  ({
+    ...row,
+    remarks:
+      Object.prototype.hasOwnProperty.call(row, 'remarks') && typeof row.remarks === 'string'
+        ? row.remarks
+        : readLocalApplicantRemarks(row.id),
+  }) as DashboardRow;
+
+const isMissingRemarksColumnError = (message?: string | null) =>
+  typeof message === 'string' &&
+  message.toLowerCase().includes("could not find the 'remarks' column of 'career_applications'");
 
 const adminEmailList = (import.meta.env.VITE_ADMIN_EMAILS ?? '')
   .split(',')
@@ -56,7 +133,18 @@ const Dashboard: React.FC = () => {
   const [query, setQuery] = useState('');
   const [view, setView] = useState<'dashboard' | 'applications' | 'contacts'>('dashboard');
   const [drawer, setDrawer] = useState<DrawerState | null>(null);
+  const [cvPreview, setCvPreview] = useState<CvPreviewState | null>(null);
+  const [isAddApplicantOpen, setIsAddApplicantOpen] = useState(false);
+  const [manualApplicantForm, setManualApplicantForm] = useState<ManualApplicantFormState>(createEmptyManualApplicantForm);
+  const [manualApplicantStatus, setManualApplicantStatus] = useState<ManualApplicantSubmitState>({ status: 'idle' });
   const [deletingKey, setDeletingKey] = useState<string | null>(null);
+  const [remarksDraft, setRemarksDraft] = useState('');
+  const [remarksStatus, setRemarksStatus] = useState<
+    | { state: 'idle' }
+    | { state: 'saving' }
+    | { state: 'saved'; message: string }
+    | { state: 'error'; message: string }
+  >({ state: 'idle' });
   const [hiringProgress, setHiringProgress] = useState<HiringProgress>({ stage: 'cv_check', hired: false, rejected: false });
   const [progressVersion, setProgressVersion] = useState(0);
   const [emailStatus, setEmailStatus] = useState<
@@ -65,7 +153,7 @@ const Dashboard: React.FC = () => {
     | { state: 'sent'; message: string }
     | { state: 'error'; message: string }
   >({ state: 'idle' });
-  const [interviewType, setInterviewType] = useState<'AI Interview' | 'Face-to-face Interview'>('AI Interview');
+  const [interviewType, setInterviewType] = useState<'Online Interview' | 'Face-to-face Interview'>('Online Interview');
   const [interviewDateTime, setInterviewDateTime] = useState('');
   const [interviewTimezone, setInterviewTimezone] = useState('');
   const [interviewLocation, setInterviewLocation] = useState('');
@@ -73,6 +161,21 @@ const Dashboard: React.FC = () => {
   const [rejectionNote, setRejectionNote] = useState(
     "Thank you for your time and interest in Lifewood. After careful consideration, we won't be moving forward at this time. We encourage you to apply again for future roles that match your skills."
   );
+  const genderOptions = useMemo(() => ['Female', 'Male', 'Non-binary', 'Prefer not to say'] as const, []);
+  const phoneCountryCodes = useMemo(
+    () => [
+      { label: '+63 (Philippines)', value: '+63' },
+      { label: '+1 (USA/Canada)', value: '+1' },
+      { label: '+61 (Australia)', value: '+61' },
+      { label: '+44 (UK)', value: '+44' },
+      { label: '+65 (Singapore)', value: '+65' },
+      { label: '+81 (Japan)', value: '+81' },
+      { label: '+971 (UAE)', value: '+971' },
+    ],
+    []
+  );
+  const positionOptions = useMemo(() => [...CAREER_POSITION_OPTIONS], []);
+  const countryOptions = useMemo(() => [...CAREER_COUNTRY_OPTIONS], []);
 
   const filteredRows = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,6 +196,25 @@ const Dashboard: React.FC = () => {
       return haystack.includes(q);
     });
   }, [contactRows, query]);
+
+  const canSubmitManualApplicant = useMemo(() => {
+    const ageNumber = Number(manualApplicantForm.age);
+    const ageValid = Number.isFinite(ageNumber) && ageNumber >= 16 && ageNumber <= 99;
+    const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(manualApplicantForm.email.trim());
+    const phoneValid = manualApplicantForm.phoneNumber.trim().length >= 6;
+    return Boolean(
+      manualApplicantForm.firstName.trim() &&
+        manualApplicantForm.lastName.trim() &&
+        manualApplicantForm.gender &&
+        ageValid &&
+        phoneValid &&
+        emailValid &&
+        manualApplicantForm.positionApplied &&
+        manualApplicantForm.country &&
+        manualApplicantForm.currentAddress.trim() &&
+        manualApplicantStatus.status !== 'submitting'
+    );
+  }, [manualApplicantForm, manualApplicantStatus.status]);
 
   const pad2 = (n: number) => String(n).padStart(2, '0');
   const dateKey = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
@@ -119,7 +241,7 @@ const Dashboard: React.FC = () => {
     () =>
       [
         { key: 'cv_check' as const, label: 'CV Check' },
-        { key: 'ai_interview' as const, label: 'AI Interview' },
+        { key: 'ai_interview' as const, label: 'Online Interview' },
         { key: 'face_to_face' as const, label: 'Face-to-face Interview' },
       ] satisfies Array<{ key: HiringStage; label: string }>,
     []
@@ -142,8 +264,17 @@ const Dashboard: React.FC = () => {
     setInterviewDateTime('');
     setInterviewLocation('');
     setInterviewNotes('');
-    setInterviewType('AI Interview');
+    setInterviewType('Online Interview');
   }, [drawerApplicationId]);
+
+  useEffect(() => {
+    if (drawer?.kind === 'application') {
+      setRemarksDraft(drawer.row.remarks ?? '');
+    } else {
+      setRemarksDraft('');
+    }
+    setRemarksStatus({ state: 'idle' });
+  }, [drawer]);
 
   useEffect(() => {
     if (!drawerApplicationId) {
@@ -219,7 +350,7 @@ const Dashboard: React.FC = () => {
       if (appsRes.error) {
         setError(appsRes.error.message);
       } else {
-        setRows((appsRes.data ?? []) as DashboardRow[]);
+        setRows(((appsRes.data ?? []) as Array<Partial<DashboardRow> & { id: string }>).map(normalizeDashboardRow));
       }
 
       const contactRes = await supabase.from('contact_messages').select('*').order('created_at', { ascending: false });
@@ -235,14 +366,41 @@ const Dashboard: React.FC = () => {
     void run();
   }, []);
 
-  const onDownloadCv = async (row: DashboardRow) => {
+  const getSignedCvUrl = async (row: DashboardRow, options?: { download?: string | boolean }) => {
+    if (!hasApplicantCv(row)) {
+      setError('No CV uploaded for this applicant yet.');
+      return null;
+    }
     setError(null);
-    const res = await supabase.storage.from(row.cv_bucket).createSignedUrl(row.cv_path, 60);
+    const res = await supabase.storage.from(row.cv_bucket).createSignedUrl(row.cv_path, 60, options);
     if (res.error) {
       setError(res.error.message);
+      return null;
+    }
+    return res.data?.signedUrl ?? null;
+  };
+
+  const onViewCv = async (row: DashboardRow) => {
+    setCvPreview({ row, status: 'loading', url: null });
+    const signedUrl = await getSignedCvUrl(row);
+    if (signedUrl) {
+      setCvPreview({ row, status: 'ready', url: signedUrl });
       return;
     }
-    if (res.data?.signedUrl) window.open(res.data.signedUrl, '_blank', 'noopener,noreferrer');
+
+    setCvPreview((current) =>
+      current && current.row.id === row.id
+        ? {
+            ...current,
+            status: 'error',
+            url: null,
+          }
+        : current
+    );
+  };
+
+  const closeCvPreview = () => {
+    setCvPreview(null);
   };
 
   const onLogout = async () => {
@@ -278,6 +436,7 @@ const Dashboard: React.FC = () => {
       } catch {
         // ignore
       }
+      removeLocalApplicantRemarks(row.id);
 
       setProgressVersion((value) => value + 1);
     } finally {
@@ -304,6 +463,156 @@ const Dashboard: React.FC = () => {
       }
     } finally {
       setDeletingKey(null);
+    }
+  };
+
+  const onSaveApplicantRemarks = async () => {
+    if (!drawer || drawer.kind !== 'application') return;
+
+    setRemarksStatus({ state: 'saving' });
+    setError(null);
+
+    try {
+      const nextRemarks = remarksDraft;
+      const res = await supabase
+        .from('career_applications')
+        .update({ remarks: nextRemarks })
+        .eq('id', drawer.row.id)
+        .select('*')
+        .single();
+
+      if (res.error) {
+        if (isMissingRemarksColumnError(res.error.message)) {
+          writeLocalApplicantRemarks(drawer.row.id, nextRemarks);
+          const updatedRow = normalizeDashboardRow({ ...drawer.row, remarks: nextRemarks });
+          setRows((current) => current.map((item) => (item.id === updatedRow.id ? updatedRow : item)));
+          setDrawer({ kind: 'application', row: updatedRow });
+          setRemarksStatus({ state: 'saved', message: 'Remarks saved on this device.' });
+          return;
+        }
+        setRemarksStatus({ state: 'error', message: res.error.message });
+        return;
+      }
+
+      removeLocalApplicantRemarks(drawer.row.id);
+      const updatedRow = normalizeDashboardRow(res.data as Partial<DashboardRow> & { id: string });
+      setRows((current) => current.map((item) => (item.id === updatedRow.id ? updatedRow : item)));
+      setDrawer({ kind: 'application', row: updatedRow });
+      setRemarksStatus({ state: 'saved', message: 'Remarks saved.' });
+    } catch (err) {
+      setRemarksStatus({
+        state: 'error',
+        message: err instanceof Error ? err.message : 'Failed to save remarks.',
+      });
+    }
+  };
+
+  const closeAddApplicantModal = () => {
+    setIsAddApplicantOpen(false);
+    setManualApplicantStatus({ status: 'idle' });
+    setManualApplicantForm(createEmptyManualApplicantForm());
+  };
+
+  const openAddApplicantModal = () => {
+    setDrawer(null);
+    setError(null);
+    setManualApplicantStatus({ status: 'idle' });
+    setIsAddApplicantOpen(true);
+  };
+
+  const onPickManualApplicantCv = (file: File | null) => {
+    if (!file) {
+      setManualApplicantForm((prev) => ({ ...prev, cvFile: null }));
+      setManualApplicantStatus({ status: 'idle' });
+      return;
+    }
+
+    const maxBytes = 10 * 1024 * 1024;
+    const looksLikePdf = file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf');
+    if (!looksLikePdf) {
+      setManualApplicantStatus({ status: 'error', message: 'CV must be a PDF file.' });
+      return;
+    }
+    if (file.size > maxBytes) {
+      setManualApplicantStatus({ status: 'error', message: 'CV file is too large (max 10MB).' });
+      return;
+    }
+
+    setManualApplicantStatus({ status: 'idle' });
+    setManualApplicantForm((prev) => ({ ...prev, cvFile: file }));
+  };
+
+  const onCreateManualApplicant = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setManualApplicantStatus({ status: 'idle' });
+
+    if (!isSupabaseConfigured) {
+      setManualApplicantStatus({
+        status: 'error',
+        message: 'Supabase is not configured. Set VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY to add applicants.',
+      });
+      return;
+    }
+
+    if (!canSubmitManualApplicant) {
+      setManualApplicantStatus({ status: 'error', message: 'Please complete all required fields.' });
+      return;
+    }
+
+    setManualApplicantStatus({ status: 'submitting' });
+    setError(null);
+
+    try {
+      let cvBucket = '';
+      let cvPath = '';
+
+      if (manualApplicantForm.cvFile) {
+        const safeName = manualApplicantForm.cvFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const random = crypto?.randomUUID ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        cvPath = `applications/${new Date().toISOString().slice(0, 10)}/manual-${random}-${safeName}`;
+        cvBucket = 'career-cvs';
+
+        const uploadRes = await supabase.storage.from(cvBucket).upload(cvPath, manualApplicantForm.cvFile, {
+          cacheControl: '3600',
+          upsert: false,
+          contentType: 'application/pdf',
+        });
+        if (uploadRes.error) throw uploadRes.error;
+      }
+
+      const insertRes = await supabase
+        .from('career_applications')
+        .insert({
+          first_name: manualApplicantForm.firstName.trim(),
+          last_name: manualApplicantForm.lastName.trim(),
+          gender: manualApplicantForm.gender,
+          age: Number(manualApplicantForm.age),
+          phone_country_code: manualApplicantForm.phoneCountryCode,
+          phone_number: manualApplicantForm.phoneNumber.trim(),
+          email: manualApplicantForm.email.trim(),
+          position_applied: manualApplicantForm.positionApplied,
+          country: manualApplicantForm.country,
+          current_address: manualApplicantForm.currentAddress.trim(),
+          cv_bucket: cvBucket,
+          cv_path: cvPath,
+          source: manualApplicantForm.cvFile ? 'walk-in' : 'walk-in (no cv yet)',
+        })
+        .select('*')
+        .single();
+      if (insertRes.error) throw insertRes.error;
+
+      const nextRow = normalizeDashboardRow(insertRes.data as Partial<DashboardRow> & { id: string });
+      setRows((current) =>
+        [nextRow, ...current].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+      );
+      setQuery('');
+      closeAddApplicantModal();
+      setDrawer({ kind: 'application', row: nextRow });
+    } catch (err) {
+      setManualApplicantStatus({
+        status: 'error',
+        message: err instanceof Error ? err.message : 'Failed to add applicant.',
+      });
     }
   };
 
@@ -900,6 +1209,15 @@ const Dashboard: React.FC = () => {
                     {todayDateLabel}
                   </div>
                 )}
+                {view === 'applications' && (
+                  <button
+                    type="button"
+                    onClick={openAddApplicantModal}
+                    className="h-11 rounded-2xl bg-[#F5EEDB] text-[#133020] hover:bg-[#F9F7F7] border border-[#F5EEDB]/40 px-5 text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-colors"
+                  >
+                    Add Applicant
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={() => void onLogout()}
@@ -1188,86 +1506,87 @@ const Dashboard: React.FC = () => {
             ) : (
               <>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="rounded-2xl border border-[#F9F7F7]/10 bg-[#046241]/16 p-5">
-                    <div className="text-xs font-black uppercase tracking-widest text-white/60">Total</div>
+                  <div className="rounded-2xl border border-[#133020]/10 bg-[#F5EEDB] p-5 text-[#133020] shadow-[0_12px_28px_rgba(19,48,32,0.08)]">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/65">Total</div>
                     <div className="mt-2 text-3xl font-black">{view === 'applications' ? rows.length : contactRows.length}</div>
-                    <div className="mt-2 text-sm text-white/60">
+                    <div className="mt-2 text-sm text-[#133020]/60">
                       {view === 'applications' ? 'Career applications' : 'Contact messages'}
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#F9F7F7]/10 bg-[#046241]/16 p-5">
-                    <div className="text-xs font-black uppercase tracking-widest text-white/60">New Today</div>
-                    <div className="mt-2 text-3xl font-black text-[#FFB347]">
+                  <div className="rounded-2xl border border-[#133020]/10 bg-[#F5EEDB] p-5 text-[#133020] shadow-[0_12px_28px_rgba(19,48,32,0.08)]">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/65">New Today</div>
+                    <div className="mt-2 text-3xl font-black">
                       {view === 'applications' ? todayApplications : todayContacts}
                     </div>
-                    <div className="mt-2 text-sm text-white/60">Based on local time</div>
+                    <div className="mt-2 text-sm text-[#133020]/60">Based on local time</div>
                   </div>
 
-                  <div className="rounded-2xl border border-[#F9F7F7]/10 bg-[#046241]/16 p-5">
-                    <div className="text-xs font-black uppercase tracking-widest text-white/60">Showing</div>
+                  <div className="rounded-2xl border border-[#133020]/10 bg-[#F5EEDB] p-5 text-[#133020] shadow-[0_12px_28px_rgba(19,48,32,0.08)]">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/65">Showing</div>
                     <div className="mt-2 text-3xl font-black">{resultsCount ?? '...'}</div>
-                    <div className="mt-2 text-sm text-white/60">Matching your search</div>
+                    <div className="mt-2 text-sm text-[#133020]/60">Matching your search</div>
                   </div>
                 </div>
 
-                <div className="rounded-2xl border border-[#F9F7F7]/10 bg-[#046241]/14 backdrop-blur-xl overflow-hidden">
-                  <div className="px-5 py-4 border-b border-[#F9F7F7]/10 flex flex-wrap items-center justify-between gap-3">
+                <div className="rounded-2xl border border-[#133020]/10 bg-[#F5EEDB] text-[#133020] shadow-[0_12px_28px_rgba(19,48,32,0.08)] overflow-hidden">
+                  <div className="px-5 py-4 border-b border-[#133020]/10 flex flex-wrap items-center justify-between gap-3">
                     <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center h-7 px-3 rounded-2xl bg-[#046241]/55 border border-[#F9F7F7]/10 text-[10px] font-black uppercase tracking-[0.25em]">
+                      <span className="inline-flex items-center h-7 px-3 rounded-2xl bg-[#046241] border border-[#046241]/70 text-[#F5EEDB] text-[10px] font-black uppercase tracking-[0.25em]">
                         {view === 'applications' ? 'Applications' : 'Contact Messages'}
                       </span>
-                      <span className="text-sm text-white/60">{loading ? 'Loading...' : `${resultsCount} results`}</span>
+                      <span className="text-sm text-[#133020]/60">{loading ? 'Loading...' : `${resultsCount} results`}</span>
                     </div>
-                    <div className="text-xs text-white/40">Click a row to view details.</div>
+                    <div className="text-xs text-[#133020]/45">Click a row to view details.</div>
                   </div>
 
                   <div className="overflow-x-auto">
                     {loading ? (
-                      <div className="p-6 text-sm text-white/60">Fetching records...</div>
+                      <div className="p-6 text-sm text-[#133020]/60">Fetching records...</div>
                     ) : view === 'applications' && filteredRows.length === 0 ? (
-                      <div className="p-6 text-sm text-white/60">No applications found.</div>
+                      <div className="p-6 text-sm text-[#133020]/60">No applications found.</div>
                     ) : view === 'contacts' && filteredContactRows.length === 0 ? (
-                      <div className="p-6 text-sm text-white/60">No contact messages found.</div>
+                      <div className="p-6 text-sm text-[#133020]/60">No contact messages found.</div>
                     ) : view === 'applications' ? (
                       <table className="min-w-full text-sm">
-                        <thead className="bg-[#133020]/55">
+                        <thead className="bg-[#133020]/6">
                           <tr className="text-left">
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Name</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Email</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Position</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Country</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Created</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Actions</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Name</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Email</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Position</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Country</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Created</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#F9F7F7]/10">
+                        <tbody className="divide-y divide-[#133020]/10">
                           {filteredRows.map((r) => (
                             <tr
                               key={r.id}
                               onClick={() => setDrawer({ kind: 'application', row: r })}
-                              className="hover:bg-[#046241]/18 cursor-pointer"
+                              className="hover:bg-[#133020]/5 cursor-pointer"
                             >
                               <td className="px-5 py-4 font-bold whitespace-nowrap">
                                 {r.first_name} {r.last_name}
                               </td>
-                              <td className="px-5 py-4 text-white/70 max-w-[320px] truncate">{r.email}</td>
-                              <td className="px-5 py-4 text-white/80 max-w-[260px] truncate">{r.position_applied}</td>
-                              <td className="px-5 py-4 text-white/70 whitespace-nowrap">{r.country}</td>
-                              <td className="px-5 py-4 text-white/60 whitespace-nowrap">
+                              <td className="px-5 py-4 text-[#133020]/70 max-w-[320px] truncate">{r.email}</td>
+                              <td className="px-5 py-4 text-[#133020]/80 max-w-[260px] truncate">{r.position_applied}</td>
+                              <td className="px-5 py-4 text-[#133020]/70 whitespace-nowrap">{r.country}</td>
+                              <td className="px-5 py-4 text-[#133020]/60 whitespace-nowrap">
                                 {new Date(r.created_at).toLocaleString()}
                               </td>
                               <td className="px-5 py-4">
-                                <div className="flex items-center gap-2">
+                                <div className="flex flex-wrap items-center gap-2">
                                   <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      void onDownloadCv(r);
+                                      void onViewCv(r);
                                     }}
-                                    className="h-9 rounded-2xl bg-[#046241]/25 hover:bg-[#046241]/35 border border-[#F9F7F7]/10 px-4 text-[10px] font-black uppercase tracking-widest"
+                                    disabled={!hasApplicantCv(r)}
+                                    className="h-9 rounded-2xl bg-white text-[#133020] hover:bg-[#F9F7F7] disabled:bg-[#133020]/10 disabled:text-[#133020]/35 disabled:border-[#133020]/10 disabled:cursor-not-allowed border border-[#133020]/18 shadow-[0_6px_16px_rgba(19,48,32,0.08)] px-4 text-[10px] font-black uppercase tracking-widest"
                                   >
-                                    Download CV
+                                    {hasApplicantCv(r) ? 'View CV' : 'No CV Yet'}
                                   </button>
                                   <button
                                     type="button"
@@ -1276,7 +1595,7 @@ const Dashboard: React.FC = () => {
                                       void onDeleteApplication(r);
                                     }}
                                     disabled={deletingKey === `application:${r.id}`}
-                                    className="h-9 rounded-2xl bg-[#F5EEDB] text-[#133020] hover:bg-[#F9F7F7] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F5EEDB]/40 px-4 text-[10px] font-black uppercase tracking-widest"
+                                    className="h-9 rounded-2xl bg-[#B42318]/10 text-[#B42318] hover:bg-[#B42318]/16 disabled:opacity-50 disabled:cursor-not-allowed border border-[#B42318]/20 px-4 text-[10px] font-black uppercase tracking-widest"
                                   >
                                     {deletingKey === `application:${r.id}` ? 'Removing...' : 'Remove'}
                                   </button>
@@ -1288,28 +1607,28 @@ const Dashboard: React.FC = () => {
                       </table>
                     ) : (
                       <table className="min-w-full text-sm">
-                        <thead className="bg-[#133020]/55">
+                        <thead className="bg-[#133020]/6">
                           <tr className="text-left">
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Name</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Email</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Message</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Source</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Created</th>
-                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-white/50">Actions</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Name</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Email</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Message</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Source</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Created</th>
+                            <th className="px-5 py-3 text-xs font-black uppercase tracking-widest text-[#133020]/50">Actions</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-[#F9F7F7]/10">
+                        <tbody className="divide-y divide-[#133020]/10">
                           {filteredContactRows.map((r) => (
                             <tr
                               key={r.id}
                               onClick={() => setDrawer({ kind: 'contact', row: r })}
-                              className="hover:bg-[#046241]/18 cursor-pointer"
+                              className="hover:bg-[#133020]/5 cursor-pointer"
                             >
                               <td className="px-5 py-4 font-bold whitespace-nowrap">{r.name}</td>
-                              <td className="px-5 py-4 text-white/70 max-w-[320px] truncate">{r.email}</td>
-                              <td className="px-5 py-4 text-white/70 max-w-[560px] truncate">{r.message}</td>
-                              <td className="px-5 py-4 text-white/70 whitespace-nowrap">{r.source}</td>
-                              <td className="px-5 py-4 text-white/60 whitespace-nowrap">
+                              <td className="px-5 py-4 text-[#133020]/70 max-w-[320px] truncate">{r.email}</td>
+                              <td className="px-5 py-4 text-[#133020]/70 max-w-[560px] truncate">{r.message}</td>
+                              <td className="px-5 py-4 text-[#133020]/70 whitespace-nowrap">{r.source}</td>
+                              <td className="px-5 py-4 text-[#133020]/60 whitespace-nowrap">
                                 {new Date(r.created_at).toLocaleString()}
                               </td>
                               <td className="px-5 py-4">
@@ -1320,7 +1639,7 @@ const Dashboard: React.FC = () => {
                                     void onDeleteContact(r);
                                   }}
                                   disabled={deletingKey === `contact:${r.id}`}
-                                  className="h-9 rounded-2xl bg-[#F5EEDB] text-[#133020] hover:bg-[#F9F7F7] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F5EEDB]/40 px-4 text-[10px] font-black uppercase tracking-widest"
+                                  className="h-9 rounded-2xl bg-[#B42318]/10 text-[#B42318] hover:bg-[#B42318]/16 disabled:opacity-50 disabled:cursor-not-allowed border border-[#B42318]/20 px-4 text-[10px] font-black uppercase tracking-widest"
                                 >
                                   {deletingKey === `contact:${r.id}` ? 'Removing...' : 'Remove'}
                                 </button>
@@ -1336,6 +1655,276 @@ const Dashboard: React.FC = () => {
             )}
         </main>
       </div>
+
+      {isAddApplicantOpen && (
+        <div className="fixed inset-0 z-40">
+          <button
+            type="button"
+            onClick={closeAddApplicantModal}
+            className="absolute inset-0 bg-black/60"
+            aria-label="Close add applicant form"
+          />
+          <div className="relative z-10 flex min-h-full items-center justify-center p-4 sm:p-6">
+            <div className="w-full max-w-3xl rounded-[2rem] border border-[#133020]/10 bg-[#F5EEDB] text-[#133020] shadow-2xl overflow-hidden">
+              <div className="px-6 py-5 border-b border-[#133020]/10 flex items-start justify-between gap-4">
+                <div>
+                  <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#046241]">Manual Entry</div>
+                  <div className="mt-2 text-2xl font-black tracking-tight">Add Applicant</div>
+                  <div className="mt-1 text-sm text-[#133020]/60">
+                    Use this for walk-in candidates or applicants received outside the website.
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={closeAddApplicantModal}
+                  className="h-10 w-10 rounded-2xl bg-[#133020]/6 hover:bg-[#133020]/10 border border-[#133020]/10 grid place-items-center shrink-0"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+
+              <form onSubmit={onCreateManualApplicant} className="p-6 space-y-5">
+                {manualApplicantStatus.status === 'error' && (
+                  <div className="rounded-2xl border border-[#B42318]/20 bg-[#B42318]/8 px-4 py-3 text-sm text-[#B42318]">
+                    {manualApplicantStatus.message}
+                  </div>
+                )}
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">First Name</div>
+                    <input
+                      value={manualApplicantForm.firstName}
+                      onChange={(e) => setManualApplicantForm((prev) => ({ ...prev, firstName: e.target.value }))}
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Last Name</div>
+                    <input
+                      value={manualApplicantForm.lastName}
+                      onChange={(e) => setManualApplicantForm((prev) => ({ ...prev, lastName: e.target.value }))}
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Gender</div>
+                    <select
+                      value={manualApplicantForm.gender}
+                      onChange={(e) =>
+                        setManualApplicantForm((prev) => ({
+                          ...prev,
+                          gender: e.target.value as ManualApplicantFormState['gender'],
+                        }))
+                      }
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    >
+                      <option value="">Select gender</option>
+                      {genderOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Age</div>
+                    <input
+                      type="number"
+                      min="16"
+                      max="99"
+                      value={manualApplicantForm.age}
+                      onChange={(e) => setManualApplicantForm((prev) => ({ ...prev, age: e.target.value }))}
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Phone Code</div>
+                    <select
+                      value={manualApplicantForm.phoneCountryCode}
+                      onChange={(e) =>
+                        setManualApplicantForm((prev) => ({ ...prev, phoneCountryCode: e.target.value }))
+                      }
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    >
+                      {phoneCountryCodes.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Phone Number</div>
+                    <input
+                      value={manualApplicantForm.phoneNumber}
+                      onChange={(e) => setManualApplicantForm((prev) => ({ ...prev, phoneNumber: e.target.value }))}
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Email</div>
+                    <input
+                      type="email"
+                      value={manualApplicantForm.email}
+                      onChange={(e) => setManualApplicantForm((prev) => ({ ...prev, email: e.target.value }))}
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    />
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Position</div>
+                    <select
+                      value={manualApplicantForm.positionApplied}
+                      onChange={(e) =>
+                        setManualApplicantForm((prev) => ({ ...prev, positionApplied: e.target.value }))
+                      }
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    >
+                      <option value="">Select position</option>
+                      {positionOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Country</div>
+                    <select
+                      value={manualApplicantForm.country}
+                      onChange={(e) => setManualApplicantForm((prev) => ({ ...prev, country: e.target.value }))}
+                      className="mt-2 h-11 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 outline-none focus:ring-2 focus:ring-[#046241]/20"
+                    >
+                      <option value="">Select country</option>
+                      {countryOptions.map((option) => (
+                        <option key={option} value={option}>
+                          {option}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">Current Address</div>
+                    <textarea
+                      rows={3}
+                      value={manualApplicantForm.currentAddress}
+                      onChange={(e) =>
+                        setManualApplicantForm((prev) => ({ ...prev, currentAddress: e.target.value }))
+                      }
+                      className="mt-2 w-full rounded-2xl bg-white/70 border border-[#133020]/10 px-4 py-3 outline-none resize-none focus:ring-2 focus:ring-[#046241]/20"
+                    />
+                  </label>
+                  <label className="block sm:col-span-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="text-xs font-black uppercase tracking-widest text-[#133020]/55">CV Upload</div>
+                      <div className="text-[11px] font-bold text-[#133020]/55">Optional for walk-ins</div>
+                    </div>
+                    <div className="mt-2 rounded-2xl border border-dashed border-[#133020]/18 bg-white/55 px-4 py-4">
+                      <input
+                        type="file"
+                        accept="application/pdf,.pdf"
+                        onChange={(e) => onPickManualApplicantCv(e.target.files?.[0] ?? null)}
+                        className="block w-full text-sm file:mr-4 file:rounded-2xl file:border-0 file:bg-[#046241] file:px-4 file:py-2 file:text-[11px] file:font-black file:uppercase file:tracking-widest file:text-[#F5EEDB]"
+                      />
+                      <div className="mt-3 text-sm text-[#133020]/65">
+                        {manualApplicantForm.cvFile
+                          ? manualApplicantForm.cvFile.name
+                          : 'No CV uploaded yet. You can still save the applicant as a walk-in.'}
+                      </div>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="rounded-2xl border border-[#133020]/10 bg-white/45 px-4 py-4 text-sm text-[#133020]/70">
+                  Saved applicants from this form are marked as walk-ins so your team can track manual entries separately from website submissions.
+                </div>
+
+                <div className="flex flex-wrap items-center justify-end gap-3">
+                  <button
+                    type="button"
+                    onClick={closeAddApplicantModal}
+                    className="h-11 rounded-2xl bg-[#133020]/6 text-[#133020] hover:bg-[#133020]/10 border border-[#133020]/10 px-5 text-xs font-black uppercase tracking-widest transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={!canSubmitManualApplicant}
+                    className="h-11 rounded-2xl bg-[#046241] text-[#F5EEDB] hover:bg-[#0b7550] disabled:bg-[#133020]/12 disabled:text-[#133020]/35 disabled:border-[#133020]/10 disabled:cursor-not-allowed border border-[#046241]/70 px-5 text-xs font-black uppercase tracking-widest shadow-lg active:scale-95 transition-colors"
+                  >
+                    {manualApplicantStatus.status === 'submitting' ? 'Saving...' : 'Save Applicant'}
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {cvPreview && (
+        <div className="fixed inset-0 z-[60]">
+          <button
+            type="button"
+            onClick={closeCvPreview}
+            className="absolute inset-0 bg-black/70"
+            aria-label="Close CV preview"
+          />
+          <div className="relative z-10 flex min-h-full items-center justify-center p-4 sm:p-6">
+            <div className="w-full max-w-6xl h-[85vh] rounded-[2rem] border border-[#F9F7F7]/12 bg-[#133020] text-[#F9F7F7] shadow-2xl overflow-hidden flex flex-col">
+              <div className="px-6 py-5 border-b border-[#F9F7F7]/10 flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="text-[10px] font-black uppercase tracking-[0.25em] text-[#FFC370]">CV Preview</div>
+                  <div className="mt-2 text-xl font-black tracking-tight truncate">
+                    {cvPreview.row.first_name} {cvPreview.row.last_name}
+                  </div>
+                  <div className="mt-1 text-xs text-[#F9F7F7]/60">{cvPreview.row.position_applied}</div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={closeCvPreview}
+                    className="h-10 w-10 rounded-2xl bg-[#F9F7F7]/10 hover:bg-[#F9F7F7]/15 border border-[#F9F7F7]/10 grid place-items-center shrink-0"
+                    aria-label="Close"
+                  >
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 6l12 12M18 6L6 18" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex-1 bg-[#0f2418]">
+                {cvPreview.status === 'loading' ? (
+                  <div className="h-full grid place-items-center px-6 text-center">
+                    <div>
+                      <div className="text-lg font-black">Loading CV preview...</div>
+                      <div className="mt-2 text-sm text-[#F9F7F7]/60">Please wait while we prepare the file.</div>
+                    </div>
+                  </div>
+                ) : cvPreview.status === 'error' || !cvPreview.url ? (
+                  <div className="h-full grid place-items-center px-6 text-center">
+                    <div>
+                      <div className="text-lg font-black">Unable to preview this CV</div>
+                      <div className="mt-2 text-sm text-[#F9F7F7]/60">
+                        Try the download button or reopen the preview.
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <iframe
+                    title={`CV preview for ${cvPreview.row.first_name} ${cvPreview.row.last_name}`}
+                    src={cvPreview.url}
+                    className="h-full w-full"
+                  />
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Details drawer */}
       {drawer && (
@@ -1380,7 +1969,7 @@ const Dashboard: React.FC = () => {
                         <div className="min-w-0">
                           <div className="text-sm font-black">Hiring Progress</div>
                           <div className="mt-1 text-xs text-[#F9F7F7]/65">
-                            CV check -&gt; AI interview -&gt; Face-to-face interview
+                            CV check -&gt; Online interview -&gt; Face-to-face interview
                           </div>
                         </div>
 
@@ -1542,11 +2131,11 @@ const Dashboard: React.FC = () => {
                               <select
                                 value={interviewType}
                                 onChange={(e) =>
-                                  setInterviewType(e.target.value as 'AI Interview' | 'Face-to-face Interview')
+                                  setInterviewType(e.target.value as 'Online Interview' | 'Face-to-face Interview')
                                 }
                                 className="mt-1 h-11 w-full rounded-2xl bg-[#133020]/40 text-[#F9F7F7] border border-[#F9F7F7]/10 px-3 outline-none"
                               >
-                                <option value="AI Interview">AI Interview</option>
+                                <option value="Online Interview">Online Interview</option>
                                 <option value="Face-to-face Interview">Face-to-face Interview</option>
                               </select>
                             </label>
@@ -1669,13 +2258,16 @@ const Dashboard: React.FC = () => {
                     <div className="rounded-2xl border border-[#F9F7F7]/10 bg-[#046241]/16 p-5">
                     <div className="flex items-center justify-between gap-3">
                       <div className="text-sm font-black">Applicant Details</div>
-                      <button
-                        type="button"
-                        onClick={() => void onDownloadCv(drawer.row)}
-                        className="h-10 rounded-2xl bg-[#FFB347] text-[#133020] hover:bg-[#FFC370] border border-[#FFC370]/40 px-4 text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-colors"
-                      >
-                        Download CV
-                      </button>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void onViewCv(drawer.row)}
+                          disabled={!hasApplicantCv(drawer.row)}
+                          className="h-10 rounded-2xl bg-[#F9F7F7]/10 text-[#F9F7F7] hover:bg-[#F9F7F7]/16 disabled:bg-[#F9F7F7]/10 disabled:text-[#F9F7F7]/35 disabled:border-[#F9F7F7]/10 disabled:cursor-not-allowed border border-[#F9F7F7]/10 px-4 text-[10px] font-black uppercase tracking-widest transition-colors"
+                        >
+                          {hasApplicantCv(drawer.row) ? 'View CV' : 'No CV Uploaded'}
+                        </button>
+                      </div>
                     </div>
 
                     <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
@@ -1705,6 +2297,47 @@ const Dashboard: React.FC = () => {
                         <div className="text-xs uppercase tracking-widest text-white/50">Other</div>
                         <div className="mt-1 text-white/90">
                           {drawer.row.gender} | {drawer.row.age} | Source: {drawer.row.source}
+                        </div>
+                      </div>
+                      <div className="sm:col-span-2">
+                        <div className="flex flex-wrap items-center justify-between gap-3">
+                          <div className="text-xs uppercase tracking-widest text-white/50">Remarks</div>
+                          <div
+                            className={[
+                              'text-xs font-bold',
+                              remarksStatus.state === 'error'
+                                ? 'text-[#FFC370]'
+                                : remarksStatus.state === 'saved'
+                                  ? 'text-[#F5EEDB]'
+                                  : 'text-white/55',
+                            ].join(' ')}
+                          >
+                            {remarksStatus.state === 'idle'
+                              ? 'Private admin notes'
+                              : remarksStatus.state === 'saving'
+                                ? 'Saving remarks...'
+                                : remarksStatus.message}
+                          </div>
+                        </div>
+                        <textarea
+                          value={remarksDraft}
+                          onChange={(e) => {
+                            setRemarksDraft(e.target.value);
+                            if (remarksStatus.state !== 'idle') setRemarksStatus({ state: 'idle' });
+                          }}
+                          rows={4}
+                          placeholder="Add walk-in notes, interview impressions, follow-ups, or reminders..."
+                          className="mt-2 w-full rounded-2xl bg-[#133020]/40 text-[#F9F7F7] placeholder:text-[#F9F7F7]/35 border border-[#F9F7F7]/10 px-3 py-3 outline-none resize-none"
+                        />
+                        <div className="mt-3 flex justify-end">
+                          <button
+                            type="button"
+                            onClick={() => void onSaveApplicantRemarks()}
+                            disabled={remarksStatus.state === 'saving' || remarksDraft === (drawer.row.remarks ?? '')}
+                            className="h-10 rounded-2xl bg-[#F5EEDB] text-[#133020] hover:bg-[#F9F7F7] disabled:opacity-50 disabled:cursor-not-allowed border border-[#F5EEDB]/40 px-4 text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-colors"
+                          >
+                            {remarksStatus.state === 'saving' ? 'Saving...' : 'Save Remarks'}
+                          </button>
                         </div>
                       </div>
                     </div>
